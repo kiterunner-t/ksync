@@ -1,0 +1,17 @@
+{
+    "name": "安全",
+    "type": "d",
+    "ctime": 1,
+    "size": 1,
+    "md5": 123,
+    "version": ["uuid", 0]
+    "subfiles": {
+        "fullname": {
+            "name": "python绝技：运用python成为顶级黑客.pdf",
+            "type": "f",
+            "ctime": 1,
+            "size": 1,
+            "md5": 123
+        }
+    }
+}

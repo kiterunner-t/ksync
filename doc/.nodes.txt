@@ -1,0 +1,12 @@
+{
+    "name": "uuid",
+    "id": "A",
+    "create_time": "local time",  // 试着进行了NTP同步，大致时间差不多
+    "type": "local",
+    "path": "your path",
+
+    "others": [
+        {},
+        {}
+    ]
+}
