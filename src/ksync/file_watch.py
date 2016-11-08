@@ -19,26 +19,24 @@ class FileHandler(watch_events.FileSystemEventHandler):
 
     def on_created(self, event):
         super(FileHandler, self).on_created(event)
+
+        logging.info("file created, %s", event.src_path)
         if not event.is_directory:
             logging.info("created name:[%s]", event.src_path)
 
-        m = message.Message(message.Type.FileChange)
-        m.node = self.node
-        m.change_path = event.src_path
-
+        m = message.FileMessage(message.Type.FileChange, event.src_path, self.node)
         self.queue.put(m)
 
 
     def on_modified(self, event):
         super(FileHandler, self).on_created(event)
+        logging.info("file modified, %s", event.src_path)
+
         if not event.is_directory:
             logging.info("modified name:[%s]", event.src_path)
             abs_path = event.src_path
 
-        m = message.Message(message.Type.FileChange)
-        m.node = self.node
-        m.change_path = event.src_path
-
+        m = message.FileMessage(message.Type.FileChange, event.src_path, self.node)
         self.queue.put(m)
 
 
@@ -49,14 +47,14 @@ class Watcher(object):
         self.observer = watch_observer.Observer()
 
 
-    def add_path(self, node):
+    def add_node(self, node):
         self.node.append(node)
 
         watch_handler = FileHandler(node, self.queue)
-        self.observer.schedule(watch_handler, node.path, recursive=True)
+        self.observer.schedule(watch_handler, node.base_path, recursive=True)
 
 
-    def remove_path(self, node):
+    def remove_node(self, node):
         pass
 
 
@@ -65,9 +63,9 @@ class Watcher(object):
             raise NotImplementedError
 
         observer = self.observer
-        for n in self.node:
-            watch_handler = FileHandler(n, self.queue)
-            observer.schedule(watch_handler, n.path, recursive=True)
+        #for n in self.node:
+        #    watch_handler = FileHandler(n, self.queue)
+        #    observer.schedule(watch_handler, n.path, recursive=True)
 
         observer.start()
 

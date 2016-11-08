@@ -43,5 +43,5 @@ class DiskMonitor(object):
 
         m = message.Message(message.Type.DiskRemove)
         m.disk_path = driver_path
-        self.queu.put(m)
+        self.queue.put(m)
 

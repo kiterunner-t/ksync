@@ -37,17 +37,18 @@ class Main(object):
         monitor.run()
         self._threads.append(monitor)
 
-        # 启动文件监控模块
-        self.watcher = file_watch.Watcher(q)
-        self._threads.append(self.watcher)
-
         # 启动node_manager，获取本地节点信息；刷新本地文件相关信息
         # 初始节点信息大多无效，当有节点通信以后，需要再次保存节点信息
         node_manager = self._node_manager
         local_node = node_manager.load_node(self.config.local_path)
         local_node.load_filelists()
-
         self.local_node = local_node
+
+        # 启动文件监控模块
+        self.watcher = file_watch.Watcher(q)
+        self.watcher.add_node(local_node)
+        self.watcher.start()
+        self._threads.append(self.watcher)
 
         # 主线程监控queue，然后处理任务
         while True:
@@ -101,7 +102,7 @@ class Main(object):
 
         self.local_node.sync_file(new_node)
 
-        self.watcher.add_path(new_node)
+        self.watcher.add_node(new_node)
 
 
     def _disk_remove(self, msg):
