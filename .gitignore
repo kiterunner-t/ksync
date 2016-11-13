@@ -2,3 +2,5 @@
 .idea
 src/ksync/*.pyc
 bin/*.pyc
+test/ut/data/test-file-walk-data
+

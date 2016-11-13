@@ -7,6 +7,7 @@ import logging
 import os
 import threading
 
+import klog
 import message
 
 
@@ -31,7 +32,7 @@ class DiskMonitor(object):
 
 
     def on_disk_arrive(self, driver_path):
-        logging.info("Removable disk arrive: %s", driver_path)
+        klog.info("Removable disk arrive: %s", driver_path)
 
         m = message.Message(message.Type.DiskArrival)
         m.disk_path = driver_path
@@ -39,7 +40,7 @@ class DiskMonitor(object):
 
     
     def on_disk_remove(self, driver_path):
-        logging.info("Removable disk leave: %s", driver_path)
+        klog.info("Removable disk leave: %s", driver_path)
 
         m = message.Message(message.Type.DiskRemove)
         m.disk_path = driver_path

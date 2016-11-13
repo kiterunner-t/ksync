@@ -3,12 +3,12 @@
 # Copyright (C) KRT, 2016 by kiterunner_t
 # TO THE HAPPY FEW
 
-import logging
 import os
 import Queue as queue
 
-import config
 import file_watch
+import kconfig
+import klog
 import message
 import node
 
@@ -50,6 +50,8 @@ class Main(object):
         self.watcher.start()
         self._threads.append(self.watcher)
 
+        klog.info("Start monitor job.")
+
         # 主线程监控queue，然后处理任务
         while True:
             msg = q.get()
@@ -71,30 +73,22 @@ class Main(object):
     def _get_monitor(self, q):
         platform = self.config.platform
 
-        if platform == config.Platform.Nt:
+        if platform == kconfig.Platform.Nt:
             import disk_monitor_win as disk_monitor
             return disk_monitor.WinDiskMonitor(q)
 
-        elif platform == config.Platform.Linux:
+        elif platform == kconfig.Platform.Linux:
             raise NotImplementedError
 
         else:
             raise NotImplementedError
 
 
-    # 读取U盘上的.filelist.txt文件
-    # 读取U盘上的文件，并计算文件相关信息
-    # 与U盘的.filelist.txt比较，不一致的记录WARN信息；
-
-    # 与硬盘上的.filelist.txt（此时在内存）进行比较
-    # 同步差异文件内容，列出有修改冲突的文件，并提供选项看拷贝哪一边的文件
-
-    # 监控可移动磁盘的文件夹变化
     def _disk_arrival(self, msg):
         driver_path = msg.disk_path
         udisk_path = os.path.join(driver_path, self.config.removable_disk_path)
         if not os.path.exists(udisk_path):
-            logging.info("path is not exist: %s", udisk_path)
+            klog.info("path is not exist: %s", udisk_path)
             return
 
         new_node = self._node_manager.load_node(udisk_path)
@@ -109,7 +103,7 @@ class Main(object):
         driver_path = msg.disk_path
         udisk_path = os.path.join(driver_path, self.config.removable_disk_path)
         if not os.path.exists(udisk_path):
-            logging.info("path is not exist: %s", udisk_path)
+            klog.info("path is not exist: %s", udisk_path)
             return
 
         self.watcher.remove_path(udisk_path)

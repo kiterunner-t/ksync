@@ -3,11 +3,10 @@
 # Copyright (C) KRT, 2016 by kiterunner_t
 # TO THE HAPPY FEW
 
-import logging
-
 import watchdog.events as watch_events
 import watchdog.observers as watch_observer
 
+import klog
 import message
 
 
@@ -20,9 +19,9 @@ class FileHandler(watch_events.FileSystemEventHandler):
     def on_created(self, event):
         super(FileHandler, self).on_created(event)
 
-        logging.info("file created, %s", event.src_path)
+        klog.info("file created, %s", event.src_path)
         if not event.is_directory:
-            logging.info("created name:[%s]", event.src_path)
+            klog.info("created name:[%s]", event.src_path)
 
         m = message.FileMessage(message.Type.FileChange, event.src_path, self.node)
         self.queue.put(m)
@@ -30,10 +29,10 @@ class FileHandler(watch_events.FileSystemEventHandler):
 
     def on_modified(self, event):
         super(FileHandler, self).on_created(event)
-        logging.info("file modified, %s", event.src_path)
+        klog.info("file modified, %s", event.src_path)
 
         if not event.is_directory:
-            logging.info("modified name:[%s]", event.src_path)
+            klog.info("modified name:[%s]", event.src_path)
             abs_path = event.src_path
 
         m = message.FileMessage(message.Type.FileChange, event.src_path, self.node)

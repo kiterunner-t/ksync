@@ -4,13 +4,13 @@
 # TO THE HAPPY FEW
 
 import ctypes
-import logging
 
 import win32api
 import win32gui
 import win32con
 
 import disk_monitor
+import klog
 
 
 # https://msdn.microsoft.com/en-us/library/aa363480(VS.85).aspx
@@ -103,13 +103,12 @@ class WinDiskMonitor(disk_monitor.DiskMonitor):
         dev_broadcast_hdr = DevBroadcastHeader.from_address(lparam) 
 
         if wparam == DeviceEvent.Arrival: 
-            if dev_broadcast_hdr.dbch_devicetype == DeviceType.Volume: 
-                logging.info("It's a volume!")
+            if dev_broadcast_hdr.dbch_devicetype == DeviceType.Volume:
+                klog.info("It's a volume!")
 
             driver_path = WinDiskMonitor._get_driver(lparam)
 
             dev_broadcast_volume = DevBroadcastVolume.from_address(lparam)
-            print dev_broadcast_volume.dbcv_flags
             if dev_broadcast_volume.dbcv_flags == DeviceVolume.Media: 
                 pass
 

@@ -6,11 +6,13 @@
 import copy
 import datetime
 import json
-import logging
 import os
+import shutil
+import traceback
 
-import file_manager
-import util
+import file_info
+import klog
+import kutil
 
 
 class NodeType(object):
@@ -29,10 +31,22 @@ class Node(object):
     FileListsName = ".filelists.txt"
 
 
+    def __init__(self):
+        self.name = None
+        self.id = None
+        self.type = NodeType.Unknown
+        self.base_path = None  # monitor path
+        self.create_time = None
+
+        self.status = NodeStatus.Idle
+        self.root_file_info = None  # 按目录层级结构构建该map，底层为顶级目录 local FileInfo
+        self.root_file_map = {}     # fullname (path+name) -> FileInfo
+
+
     @staticmethod
     def create(path):
         n = Node()
-        n.name = util.get_uuid()
+        n.name = kutil.get_uuid()
         n.base_path = path
         n.id = 0
 
@@ -47,22 +61,10 @@ class Node(object):
         n = Node()
         n.name = m["name"]
         n.id = m["id"]
-        n.base_path = m["path"]
+        n.base_path = m["base_path"]
         n.type = m["type"]
         n.create_time = m["create_time"]
         return n
-
-
-    def __init__(self):
-        self.name = None
-        self.id = None
-        self.type = NodeType.Unknown
-        self.base_path = None  # 该节点对应的监控目录
-        self.create_time = None
-
-        self.status = NodeStatus.Idle
-        self.file_info = None  # 按目录层级结构构建该map，底层为顶级目录 local FileInfo
-        self.file_map = {}  # fullpath -> FileInfo
 
 
     def to_map(self):
@@ -71,57 +73,99 @@ class Node(object):
             "id": self.id,
             "create_time": self.create_time,
             "type": self.type,
-            "path": self.base_path,
+            "base_path": self.base_path,
         }
 
         return h
 
 
     def load_filelists(self):
-        self.file_info = file_manager.FileInfo.create(self.base_path)
-        self.file_info.create_file_map(self.file_map)
+        self.root_file_info = file_info.create(self.base_path)
+        self.root_file_info.create_file_map(self.root_file_map)
         self.update_version()
 
 
-    # 根据从filelists.txt读取出来的信息，更新版本信息
     # @todo 给出异常的那些文件信息
     def update_version(self):
-        filelist_path = os.path.join(self.base_path, Node.FileListsName)
-        finfo_record = file_manager.FileInfo.parse_filelists(filelist_path)
-        if not finfo_record:
-            self.file_info.store_fileinfo(filelist_path)
+        filelist_name = os.path.join(self.base_path, Node.FileListsName)
+        root_file_info = file_info.parse_filelists(filelist_name)
+        if not root_file_info:
+            self.root_file_info.store_fileinfo(filelist_name)
             return
 
         fmap_record = {}
-        finfo_record.create_file_map(fmap_record)
+        root_file_info.create_file_map(fmap_record)
 
-        for k, f in self.file_map.iteritems():
+        for k, f in self.root_file_map.iteritems():
             if k in fmap_record:
                 f.version = fmap_record[k].version
 
                 if f.md5 != fmap_record[k].md5:
-                    logging.info("exception, %s, %s", f.relative_path, f.name)
+                    klog.info("Update version exception, md5 is not matched for file=%s, %s",
+                                 f.relative_path, f.name)
 
             else:
-                logging.info("new file %s, %s", f.relative_path, f.name)
+                klog.info("Update version new file=%s, %s", f.relative_path, f.name)
 
 
-    # 若拷贝了文件，则拷贝完成之前，设置节点的status为Syncing
     def sync_file(self, other_node):
         self.status = NodeStatus.Syncing
         other_node.status = NodeStatus.Syncing
 
-        # 比较两个节点下面的file_info
         (to_other, from_other, conflict) = self._diff_file(other_node)
 
-        # 根据差异同步文件
-        file_manager.FileInfo.sync(self, other_node, to_other)
-        file_manager.FileInfo.sync(other_node, self, from_other)
+        self.sync(other_node, to_other)
+        other_node.sync(self, from_other)
 
         # @todo conflict的文件处理
 
         self.status = NodeStatus.Idle
         other_node.status = NodeStatus.Idle
+
+        klog.info("Sync files finished.")
+
+
+    def sync(self, to_node, fileinfo_list):
+        cwd = os.getcwd()
+
+        src_base_path = self.base_path
+        dst_base_path = to_node.base_path
+
+        try:
+            os.chdir(src_base_path)
+
+            for finfo in fileinfo_list:
+                src_relative_path = finfo.relative_path
+
+                dst_path = os.path.join(dst_base_path, src_relative_path)
+                if not os.path.exists(dst_path):
+                    os.makedirs(dst_path)
+
+                src_file = os.path.join(src_relative_path, finfo.name)
+                dst_file = os.path.join(dst_path, finfo.name)
+
+                if finfo.type == file_info.FileType.Dir:
+                    # shutil.copytree(local_src_file, local_dst_file)
+                    # 只能一个文件一个文件的copy
+                    if not os.path.exists(dst_file):
+                        klog.info("Sync file, make dirs=%s", dst_file)
+                        os.makedirs(dst_file)
+
+                else:
+                    klog.info("Sync file, filename=%s", src_file)
+                    # @todo 考虑copy失败的情况，如磁盘满
+                    shutil.copyfile(src_file, dst_file)
+
+                Node.flush_version(finfo, self, to_node)
+
+            klog.info("Sync files finished from node/%s to node/%s",
+                         self.name, to_node.name)
+
+        except:
+            klog.error("sync file error, %s", traceback.format_exc())
+
+        finally:
+            os.chdir(cwd)
 
 
     def _diff_file(self, other_node):
@@ -132,15 +176,15 @@ class Node(object):
         conflict = []
 
         # 给每个FileInfo增加一个is_diffed成员，仅仅用在该函数中
-        for fullname, finfo in self.file_map.iteritems():
-            if fullname not in other_node.file_map:
+        for fullname, finfo in self.root_file_map.iteritems():
+            if fullname not in other_node.root_file_map:
                 to_other.append(finfo)
                 continue
 
-            other_file = other_node.file_map[fullname]
+            other_file = other_node.root_file_map[fullname]
             assert finfo.type == other_file.type
 
-            if finfo.type == file_manager.FileType.Dir:
+            if finfo.type == file_info.FileType.Dir:
                 other_file.is_diffed = True
                 continue
 
@@ -157,20 +201,23 @@ class Node(object):
             elif finfo.version[1] < other_file.version[1]:
                 from_other.append(other_file)
             else:
-                logging.warn("Exception for %s: %s -> %s",
+                klog.warn("Exception for %s: %s -> %s",
                              fullname, finfo.version, other_file.version)
                 conflict.append((finfo, other_file))
 
-        for other_info in other_node.file_map.itervalues():
+        for other_info in other_node.root_file_map.itervalues():
             if not other_info.is_diffed:
                 from_other.append(other_info)
+            else:
                 other_info.is_diffed = False
 
-        for finfo in self.file_map.itervalues():
+        other_node.root_file_map["."].is_diffed = False
+
+        for finfo in self.root_file_map.itervalues():
             finfo.is_diffed = False
 
         # other_node的is_diffed应该都是False的，for debug
-        for oinfo in other_node.file_map.itervalues():
+        for oinfo in other_node.root_file_map.itervalues():
             assert oinfo.is_diffed == False
 
         return (to_other, from_other, conflict)
@@ -179,34 +226,29 @@ class Node(object):
     @staticmethod
     def flush_version(src_info, src_node, dst_node):
         fullname = os.path.join(src_info.relative_path, src_info.name)
-        if fullname in dst_node.file_map:
-            dst_info = dst_node[fullname]
+        if fullname in dst_node.root_file_map:
+            dst_info = dst_node.root_file_map[fullname]
             dst_info.version = src_info.version
 
         else:
             # 如果不存在的话，要一级一级的在dst_node中查找，并创建子node
             hierarchy_list = []
-            src_info.get_hierarchy(src_node.file_info, hierarchy_list)
-
+            src_info.get_hierarchy(".", src_node.root_file_info, hierarchy_list)
             assert len(hierarchy_list) > 0
 
-            dst_parent_info = None
-            for hl in hierarchy_list:
-                if hl.name == src_info.name:
-                    dst_parent_info = hl
-
+            dst_parent_info, needed_copy = dst_node.root_file_info.get_dst(hierarchy_list)
             assert dst_parent_info
-            dst_parent_info[src_info.name] = copy.deepcopy(src_info)
 
-            dst_info = dst_parent_info[src_info.name]
-            dst_info.update_file_map(dst_node.file_map)
+            t = copy.deepcopy(needed_copy)
+            dst_parent_info.subfiles[needed_copy.name] = t
+
+            dst_info = dst_parent_info.subfiles[needed_copy.name]
+            dst_info.update_file_map(dst_node.root_file_map)
 
         fullname = os.path.join(dst_node.base_path, Node.FileListsName)
-        dst_node.file_info.store_fileinfo(fullname)
+        dst_node.root_file_info.store_fileinfo(fullname)
 
 
-
-# 可移动磁盘当成中心节点
 class NodeManager(object):
     def __init__(self):
         # self.online_nodes = []
@@ -225,10 +267,7 @@ class NodeManager(object):
         return new_id
 
 
-    # 从磁盘中读取一个节点的信息（可能包含了其他节点的信息）
     def load_node(self, path):
-        # 若该path下不存在 .node.txt，说明这是一个新节点
-        # node id此时为0（未通信之前）
         filename = os.path.join(path, Node.FileName)
         if not os.path.exists(filename):
             n = Node.create(path)
@@ -237,12 +276,11 @@ class NodeManager(object):
             return n
 
         contents = None
-        print filename
         with open(filename, "rb") as f:
             contents = f.read()
 
         assert contents
-        print contents
+        contents = kutil.to_local(contents)
         nodes = json.loads(contents)
 
         self.add_new_node(nodes)
@@ -264,7 +302,6 @@ class NodeManager(object):
                 self._next_node_id = new_node.id
 
 
-    # 存储.node.txt和.filelists.txt
     def store_node(self, current_node):
         node_hash = current_node.to_map()
 
@@ -278,7 +315,9 @@ class NodeManager(object):
 
         fname = os.path.join(current_node.base_path, Node.FileName)
         with open(fname, "wb") as f:
-            f.write(json.dumps(node_hash))
+            h_utf8 = kutil.map_to_utf8(node_hash)
+            node_hash = json.dumps(h_utf8)
+            f.write(node_hash)
 
 
     def get_node_name_from_disk(self, path):
@@ -286,7 +325,7 @@ class NodeManager(object):
         assert os.path.exists(filename)
 
         with open(filename, "rb") as f:
-            contents = f.readlines()
+            contents = kutil.to_local(f.readlines())
 
         node_json = json.loads(contents)
         return node_json["name"]
@@ -296,8 +335,8 @@ class NodeManager(object):
         for name, n in self.all_nodes.iteritems():
             if n.path == disk_path:
                 if n.status == NodeStatus.Syncing:
-                    logging.warn("Sync failed, because of you remove the disk")
+                    klog.warn("Sync failed, because of you remove the disk")
 
-                logging.info("Remove node, name=%s, path=%s", name, disk_path)
+                klog.info("Remove node, name=%s, path=%s", name, disk_path)
                 self.all_nodes.pop(name)
 
