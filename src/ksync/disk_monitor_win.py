@@ -45,19 +45,19 @@ class VcType(object):
 
 class DevBroadcastHeader(ctypes.Structure):
     _fields_ = [ 
-        ("dbch_size", VcType.Dword),
-        ("dbch_devicetype", VcType.Dword),
-        ("dbch_reserved", VcType.Dword)
+        (u"dbch_size", VcType.Dword),
+        (u"dbch_devicetype", VcType.Dword),
+        (u"dbch_reserved", VcType.Dword)
     ]
 
 
 class DevBroadcastVolume(ctypes.Structure):
     _fields_ = [
-        ("dbcv_size", VcType.Dword),
-        ("dbcv_devicetype", VcType.Dword),
-        ("dbcv_reserved", VcType.Dword),
-        ("dbcv_unitmask", VcType.Dword),
-        ("dbcv_flags", VcType.Word)
+        (u"dbcv_size", VcType.Dword),
+        (u"dbcv_devicetype", VcType.Dword),
+        (u"dbcv_reserved", VcType.Dword),
+        (u"dbcv_unitmask", VcType.Dword),
+        (u"dbcv_flags", VcType.Word)
     ]
     
 
@@ -73,7 +73,7 @@ class WinDiskMonitor(disk_monitor.DiskMonitor):
 
         wc = win32gui.WNDCLASS()
         wc.hInstance = win32api.GetModuleHandle(None)
-        wc.lpszClassName = "udisk-monitor"
+        wc.lpszClassName = u"udisk-monitor"
         wc.style = win32con.CS_VREDRAW | win32con.CS_HREDRAW
         wc.hCursor = win32gui.LoadCursor(0, win32con.IDC_ARROW)
         wc.hbrBackground = win32con.COLOR_WINDOW
@@ -84,7 +84,7 @@ class WinDiskMonitor(disk_monitor.DiskMonitor):
 
         self.hwnd = win32gui.CreateWindow(
             class_atom,
-            "udisk monitor",
+            u"udisk monitor",
             style,
             0,
             0,
@@ -104,7 +104,7 @@ class WinDiskMonitor(disk_monitor.DiskMonitor):
 
         if wparam == DeviceEvent.Arrival: 
             if dev_broadcast_hdr.dbch_devicetype == DeviceType.Volume:
-                klog.info("It's a volume!")
+                klog.info(u"It's a volume!")
 
             driver_path = WinDiskMonitor._get_driver(lparam)
 
@@ -126,7 +126,7 @@ class WinDiskMonitor(disk_monitor.DiskMonitor):
         dev_broadcast_volume = DevBroadcastVolume.from_address(lparam)
         mask = dev_broadcast_volume.dbcv_unitmask
 
-        letters = "ABCDEFGHIGKLMNOPKRSTUVWXYZ"
+        letters = u"ABCDEFGHIGKLMNOPKRSTUVWXYZ"
         for i in xrange(0, 26):
             if mask >> i == 1:
                 # chr(ord("A") + i)

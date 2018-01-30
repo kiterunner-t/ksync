@@ -88,7 +88,7 @@ class Main(object):
         driver_path = msg.disk_path
         udisk_path = os.path.join(driver_path, self.config.removable_disk_path)
         if not os.path.exists(udisk_path):
-            klog.info("path is not exist: %s", udisk_path)
+            klog.info(u"path is not exist: %s", udisk_path)
             return
 
         new_node = self._node_manager.load_node(udisk_path)
@@ -103,7 +103,7 @@ class Main(object):
         driver_path = msg.disk_path
         udisk_path = os.path.join(driver_path, self.config.removable_disk_path)
         if not os.path.exists(udisk_path):
-            klog.info("path is not exist: %s", udisk_path)
+            klog.info(u"path is not exist: %s", udisk_path)
             return
 
         self.watcher.remove_path(udisk_path)

@@ -43,19 +43,19 @@ class FileInfo(object):
     @staticmethod
     def create_from_map(m):
         finfo = FileInfo()
-        finfo.relative_path = m["path"]
-        finfo.name = m["name"]
-        finfo.type = m["type"]
-        finfo.create_time = m["create_time"]
-        finfo.md5 = m["md5"]
-        finfo.size = m["size"]
-        finfo.version = m["version"]
+        finfo.relative_path = m[u"path"]
+        finfo.name = m[u"name"]
+        finfo.type = m[u"type"]
+        finfo.create_time = m[u"create_time"]
+        finfo.md5 = m[u"md5"]
+        finfo.size = m[u"size"]
+        finfo.version = m[u"version"]
 
-        if "subfiles" not in m:
+        if u"subfiles" not in m:
             return finfo
 
-        for f in m["subfiles"].itervalues():
-            fullname = os.path.join(f["path"], f["name"])
+        for f in m[u"subfiles"].itervalues():
+            fullname = os.path.join(f[u"path"], f[u"name"])
             finfo.subfiles[fullname] = FileInfo.create_from_map(f)
 
         return finfo
@@ -63,20 +63,20 @@ class FileInfo(object):
 
     def to_map(self):
         map = {}
-        map["path"] = self.relative_path
-        map["name"] = self.name
-        map["type"] = self.type
-        map["create_time"] = self.create_time
-        map["md5"] = self.md5
-        map["size"] = self.size
-        map["version"] = self.version
+        map[u"path"] = self.relative_path
+        map[u"name"] = self.name
+        map[u"type"] = self.type
+        map[u"create_time"] = self.create_time
+        map[u"md5"] = self.md5
+        map[u"size"] = self.size
+        map[u"version"] = self.version
 
         submap = {}
         for f in self.subfiles.itervalues():
             fullname = os.path.join(f.relative_path, f.name)
             submap[fullname] = f.to_map()
 
-        map["subfiles"] = submap
+        map[u"subfiles"] = submap
 
         return map
 
@@ -157,7 +157,7 @@ class FileInfo(object):
         h_utf8 = kutil.map_to_utf8(self.to_map())
         json_str = json.dumps(h_utf8)
 
-        klog.info("store file info to %s: %s", file_name, json_str)
+        klog.info(u"store file info to %s: %s", file_name, json_str)
 
         with open(file_name, "wb") as f:
             f.write(json_str)
@@ -219,8 +219,8 @@ def _file_walk(path, dir_name, level):
         file_stat = os.stat(fullname)
 
         if level == 0 \
-                and (file == ".node.txt" or file == ".filelists.txt"):
-            klog.info("Skip file, %s", file)
+                and (file == u".node.txt" or file == u".filelists.txt"):
+            klog.info(u"Skip file, %s", file)
             continue
 
         file_info = FileInfo()

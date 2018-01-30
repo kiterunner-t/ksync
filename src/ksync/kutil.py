@@ -12,14 +12,17 @@ import kconfig
 _sys_encoding = kconfig.config.platform_encoding
 
 
+# @Deprecated
 to_local = lambda s: s.decode("utf-8").encode(_sys_encoding) \
     if _sys_encoding not in ("utf-8", "utf8") else lambda s: s
 
 
+# @Deprecated
 to_utf8 = lambda s: s.decode(_sys_encoding).encode("utf-8") \
     if _sys_encoding not in ("utf-8", "utf8") else lambda s: s
 
 
+# @Deprecated
 def list_to_utf8(ls):
     assert isinstance(ls, list)
 
@@ -40,6 +43,7 @@ def list_to_utf8(ls):
     return ls_utf8
 
 
+# @Deprecated
 def map_to_utf8(h):
     assert isinstance(h, dict)
 

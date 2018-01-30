@@ -19,9 +19,9 @@ class FileHandler(watch_events.FileSystemEventHandler):
     def on_created(self, event):
         super(FileHandler, self).on_created(event)
 
-        klog.info("file created, %s", event.src_path)
+        klog.info(u"file created, %s", event.src_path)
         if not event.is_directory:
-            klog.info("created name:[%s]", event.src_path)
+            klog.info(u"created name:[%s]", event.src_path)
 
         m = message.FileMessage(message.Type.FileChange, event.src_path, self.node)
         self.queue.put(m)
@@ -29,10 +29,10 @@ class FileHandler(watch_events.FileSystemEventHandler):
 
     def on_modified(self, event):
         super(FileHandler, self).on_created(event)
-        klog.info("file modified, %s", event.src_path)
+        klog.info(u"file modified, %s", event.src_path)
 
         if not event.is_directory:
-            klog.info("modified name:[%s]", event.src_path)
+            klog.info(u"modified name:[%s]", event.src_path)
             abs_path = event.src_path
 
         m = message.FileMessage(message.Type.FileChange, event.src_path, self.node)

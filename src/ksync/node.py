@@ -27,8 +27,8 @@ class NodeStatus(object):
 
 
 class Node(object):
-    FileName = ".node.txt"
-    FileListsName = ".filelists.txt"
+    FileName = u".node.txt"
+    FileListsName = u".filelists.txt"
 
 
     def __init__(self):
@@ -51,7 +51,7 @@ class Node(object):
         n.id = 0
 
         now = datetime.datetime.now()
-        n.create_time = now.strftime("%Y-%m-%d %H:%M:%S.%f")
+        n.create_time = now.strftime(u"%Y-%m-%d %H:%M:%S.%f")
 
         return n
 
@@ -59,21 +59,21 @@ class Node(object):
     @staticmethod
     def from_map(m):
         n = Node()
-        n.name = m["name"]
-        n.id = m["id"]
-        n.base_path = m["base_path"]
-        n.type = m["type"]
-        n.create_time = m["create_time"]
+        n.name = m[u"name"]
+        n.id = m[u"id"]
+        n.base_path = m[u"base_path"]
+        n.type = m[u"type"]
+        n.create_time = m[u"create_time"]
         return n
 
 
     def to_map(self):
         h = {
-            "name": self.name,
-            "id": self.id,
-            "create_time": self.create_time,
-            "type": self.type,
-            "base_path": self.base_path,
+            u"name": self.name,
+            u"id": self.id,
+            u"create_time": self.create_time,
+            u"type": self.type,
+            u"base_path": self.base_path,
         }
 
         return h
@@ -101,11 +101,11 @@ class Node(object):
                 f.version = fmap_record[k].version
 
                 if f.md5 != fmap_record[k].md5:
-                    klog.info("Update version exception, md5 is not matched for file=%s, %s",
+                    klog.info(u"Update version exception, md5 is not matched for file=%s, %s",
                                  f.relative_path, f.name)
 
             else:
-                klog.info("Update version new file=%s, %s", f.relative_path, f.name)
+                klog.info(u"Update version new file=%s, %s", f.relative_path, f.name)
 
 
     def sync_file(self, other_node):
@@ -122,7 +122,7 @@ class Node(object):
         self.status = NodeStatus.Idle
         other_node.status = NodeStatus.Idle
 
-        klog.info("Sync files finished.")
+        klog.info(u"Sync files finished.")
 
 
     def sync(self, to_node, fileinfo_list):
@@ -148,21 +148,21 @@ class Node(object):
                     # shutil.copytree(local_src_file, local_dst_file)
                     # 只能一个文件一个文件的copy
                     if not os.path.exists(dst_file):
-                        klog.info("Sync file, make dirs=%s", dst_file)
+                        klog.info(u"Sync file, make dirs=%s", dst_file)
                         os.makedirs(dst_file)
 
                 else:
-                    klog.info("Sync file, filename=%s", src_file)
+                    klog.info(u"Sync file, filename=%s", src_file)
                     # @todo 考虑copy失败的情况，如磁盘满
                     shutil.copyfile(src_file, dst_file)
 
                 Node.flush_version(finfo, self, to_node)
 
-            klog.info("Sync files finished from node/%s to node/%s",
+            klog.info(u"Sync files finished from node/%s to node/%s",
                          self.name, to_node.name)
 
         except:
-            klog.error("sync file error, %s", traceback.format_exc())
+            klog.error(u"sync file error, %s", traceback.format_exc())
 
         finally:
             os.chdir(cwd)
@@ -201,8 +201,8 @@ class Node(object):
             elif finfo.version[1] < other_file.version[1]:
                 from_other.append(other_file)
             else:
-                klog.warn("Exception for %s: %s -> %s",
-                             fullname, finfo.version, other_file.version)
+                klog.warn(u"Exception for %s: %s -> %s",
+                          fullname, finfo.version, other_file.version)
                 conflict.append((finfo, other_file))
 
         for other_info in other_node.root_file_map.itervalues():
@@ -233,7 +233,7 @@ class Node(object):
         else:
             # 如果不存在的话，要一级一级的在dst_node中查找，并创建子node
             hierarchy_list = []
-            src_info.get_hierarchy(".", src_node.root_file_info, hierarchy_list)
+            src_info.get_hierarchy(u".", src_node.root_file_info, hierarchy_list)
             assert len(hierarchy_list) > 0
 
             dst_parent_info, needed_copy = dst_node.root_file_info.get_dst(hierarchy_list)
@@ -285,15 +285,15 @@ class NodeManager(object):
 
         self.add_new_node(nodes)
 
-        for n in nodes["others"]:
+        for n in nodes[u"others"]:
             self.add_new_node(n)
 
-        node_name = nodes["name"]
+        node_name = nodes[u"name"]
         return self.all_nodes[node_name]
 
 
     def add_new_node(self, node_map):
-        node_name = node_map["name"]
+        node_name = node_map[u"name"]
         if node_name not in self.all_nodes:
             new_node = Node.from_map(node_map)
             self.all_nodes[node_name] = new_node
@@ -311,7 +311,7 @@ class NodeManager(object):
                 n_hash = n.to_map()
                 others.append(n_hash)
 
-        node_hash["others"] = others
+        node_hash[u"others"] = others
 
         fname = os.path.join(current_node.base_path, Node.FileName)
         with open(fname, "wb") as f:
@@ -328,15 +328,15 @@ class NodeManager(object):
             contents = kutil.to_local(f.readlines())
 
         node_json = json.loads(contents)
-        return node_json["name"]
+        return node_json[u"name"]
 
 
     def remove_node_by_path(self, disk_path):
         for name, n in self.all_nodes.iteritems():
             if n.path == disk_path:
                 if n.status == NodeStatus.Syncing:
-                    klog.warn("Sync failed, because of you remove the disk")
+                    klog.warn(u"Sync failed, because of you remove the disk")
 
-                klog.info("Remove node, name=%s, path=%s", name, disk_path)
+                klog.info(u"Remove node, name=%s, path=%s", name, disk_path)
                 self.all_nodes.pop(name)
 

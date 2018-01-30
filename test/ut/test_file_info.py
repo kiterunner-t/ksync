@@ -73,7 +73,6 @@ class FileInfoTest(unittest.TestCase):
         self.assertEqual(src_t.name, "level-2")
 
 
-
 if __name__ == "__main__":
     unittest.main()
 
